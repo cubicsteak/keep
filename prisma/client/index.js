@@ -200,7 +200,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\Dev\\github\\4bigchoi23\\keep\\prisma\\client",
+      "value": "D:\\Dev\\github\\cubicsteak\\keep\\prisma\\client",
       "fromEnvVar": null
     },
     "config": {
@@ -216,7 +216,7 @@ const config = {
     "previewFeatures": [
       "relationJoins"
     ],
-    "sourceFilePath": "D:\\Dev\\github\\4bigchoi23\\keep\\prisma\\schema.prisma",
+    "sourceFilePath": "D:\\Dev\\github\\cubicsteak\\keep\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
