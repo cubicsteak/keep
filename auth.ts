@@ -41,3 +41,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 })
+
+export const providerMap = authConfig.providers.map((provider) => {
+  const providerData = typeof provider === "function" ? provider() : provider
+  return {
+    id: providerData.id,
+    name: providerData.name,
+    type: providerData.type ?? "oauth",
+  }
+})
