@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@/auth";
 import { PrismaClient } from '@/prisma/client';
+
+type Props = {
+  params: Promise<{ slug: string }>;
+};
+
 const prisma = new PrismaClient({
   omit: {
     user: {
@@ -10,14 +15,16 @@ const prisma = new PrismaClient({
   },
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest, { params }: Props) {
   const session = await auth();
+
   try {
     // const req = await request.json();
-    const qs = request?.nextUrl?.search?.slice(1) ?? '';
+    // const qs = request?.nextUrl?.search?.slice(1) ?? '';
+    const { slug } = await params;
 
     let fields = null;
-    switch (qs) {
+    switch (slug) {
       case 'profile':
         fields = {
           nick: true,
@@ -62,7 +69,7 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any;
 
-    if (qs && data) {
+    if (slug && data) {
       // empty string instead of null
       for (const [key, value] of Object.entries(data)) {
         data[key] = value === null ? '' : value;
@@ -82,13 +89,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: Props) {
   const session = await auth();
+
   try {
     const req = await request.json();
-    const qs = request?.nextUrl?.search?.slice(1);
+    // const qs = request?.nextUrl?.search?.slice(1);
+    const { slug } = await params;
 
-    if (qs === 'profile') {
+    if (slug === 'profile') {
       if ( !req?.nick ) {
         return NextResponse.json(
           { error: 'Name is required.' },
@@ -112,7 +121,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (qs === 'username') {
+    if (slug === 'username') {
       if (req?.username) {
         const avoid = [
           'admin', 'administrator', 
@@ -155,7 +164,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (qs === 'remove-username') {
+    if (slug === 'remove-username') {
       await prisma.user.update({
         where: {
           id: session?.user?.id ?? '',
@@ -170,7 +179,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (qs === 'security') {
+    if (slug === 'security') {
     }
 
     return NextResponse.json(

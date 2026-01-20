@@ -76,7 +76,7 @@ export default function SettingsProfile() {
     //   url: session?.user?.url ?? '',
     //   photo: session?.user?.photo ?? '',
     // },
-    defaultValues: async () => await fetch('/api/user/me?profile').then(res => res.json()),
+    defaultValues: async () => await fetch('/api/user/me/profile').then(res => res.json()),
   });
 
   const [onPending, setOnPending] = useState(false);
@@ -87,7 +87,7 @@ export default function SettingsProfile() {
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     setOnPending(true);
     try {
-      const res = await fetch('/api/user/me?profile', {
+      const res = await fetch('/api/user/me/profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

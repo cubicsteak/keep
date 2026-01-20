@@ -53,15 +53,22 @@ const FormSchema = z.object({
 });
 
 export default function SettingsAccount() {
-  const host = window?.location?.host ?? 'localhost';
+  const [host, setHost] = useState('');
   const router = useRouter();
   const { data: session, update } = useSession();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHost(window.location.host);
+    }
+  }, []);
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     // defaultValues: {
     //   username: session?.user?.username ?? '',
     // },
-    defaultValues: async () => await fetch('/api/user/me?username').then(res => res.json()),
+    defaultValues: async () => await fetch('/api/user/me/username').then(res => res.json()),
   });
 
   const [toSubmit, setToSubmit] = useState(false);
@@ -80,7 +87,7 @@ export default function SettingsAccount() {
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     setToSubmit(true);
     try {
-      const res = await fetch('/api/user/me?username', {
+      const res = await fetch('/api/user/me/username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +117,7 @@ export default function SettingsAccount() {
   const onRemove = async () => {
     setToRemove(true);
     try {
-      const res = await fetch('/api/user/me?remove-username', {
+      const res = await fetch('/api/user/me/remove-username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -196,7 +203,9 @@ export default function SettingsAccount() {
                     {profileUrl && 
                       <>
                         Your public profile address will probably look like this: {" "}
-                        <span className="text-green-600 dark:text-green-400">{host}/user/{profileUrl}</span>
+                        <span className="text-green-600 dark:text-green-400">
+                          {host || 'domain'}/user/{profileUrl}
+                        </span>
                       </>
                     }
                   </FormDescription>
