@@ -4,8 +4,12 @@ import { prisma } from '@/prisma';
 import { z } from 'zod';
 
 const httpUrl = z.string().trim().url().max(2048).refine((value) => {
-  const protocol = new URL(value).protocol;
-  return protocol === 'http:' || protocol === 'https:';
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
 }, 'Only HTTP and HTTPS URLs are allowed.');
 
 const createKeepSchema = z.object({

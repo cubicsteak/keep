@@ -6,6 +6,7 @@ import type { JWT } from "next-auth/jwt"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/prisma"
 import { PrismaClient as PrismaClientModule } from "@prisma/client"
+import { sessionUserSelect, toSessionUser } from "@/lib/session-user"
 // import { saltAndHashPassword } from "@/utils/password"
 // import { getUserFromDb } from "@/utils/db"
 // import Credentials from "next-auth/providers/credentials"
@@ -115,40 +116,6 @@ export const providerMap = providers
       }
     }
   })
-
-const sessionUserSelect = {
-  id: true,
-  name: true,
-  email: true,
-  emailVerified: true,
-  image: true,
-  createdAt: true,
-  updatedAt: true,
-  role: true,
-  nick: true,
-  photo: true,
-  bio: true,
-  url: true,
-  username: true,
-} as const;
-
-function toSessionUser(user: NonNullable<JWT['user']>) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    emailVerified: user.emailVerified,
-    image: user.image,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-    role: user.role,
-    nick: user.nick,
-    photo: user.photo,
-    bio: user.bio,
-    url: user.url,
-    username: user.username,
-  };
-}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: false,
