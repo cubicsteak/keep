@@ -30,8 +30,6 @@ declare module "next-auth" {
     bio?: string | null;
     url?: string | null;
     username?: string | null;
-    password?: string | null;
-    passsalt?: string | null;
   }
   interface Session {
     user?: {
@@ -48,8 +46,6 @@ declare module "next-auth" {
       bio?: string | null;
       url?: string | null;
       username?: string | null;
-      password?: string | null;
-      passsalt?: string | null;
     }
   }
 }
@@ -70,8 +66,6 @@ declare module "next-auth/jwt" {
       bio?: string | null;
       url?: string | null;
       username?: string | null;
-      password?: string | null;
-      passsalt?: string | null;
     }
   }
 }
@@ -122,6 +116,40 @@ export const providerMap = providers
     }
   })
 
+const sessionUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  emailVerified: true,
+  image: true,
+  createdAt: true,
+  updatedAt: true,
+  role: true,
+  nick: true,
+  photo: true,
+  bio: true,
+  url: true,
+  username: true,
+} as const;
+
+function toSessionUser(user: NonNullable<JWT['user']>) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    image: user.image,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    role: user.role,
+    nick: user.nick,
+    photo: user.photo,
+    bio: user.bio,
+    url: user.url,
+    username: user.username,
+  };
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: false,
   adapter: PrismaAdapter(prisma as PrismaClientModule),
@@ -129,12 +157,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers,
   callbacks: {
-    async jwt({ token, user, trigger, session: newData }) {
-      delete user?.password;
-      delete user?.passsalt;
-      // token = { ...token, ...user }
+    async jwt({ token, user, trigger }) {
       if (trigger === 'update') {
-        return { ...token, ...newData }
+        const userId = token.user?.id;
+        if (userId) {
+          const freshUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: sessionUserSelect,
+          });
+          if (freshUser) token.user = toSessionUser(freshUser);
+        }
+        return token;
       }
       if (trigger === 'signIn' || trigger === 'signUp') {
         if (trigger === 'signUp') {
@@ -150,7 +183,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user.nick = user?.name ?? null;
           user.photo = user?.image ?? null;
         }
-        token.user = { ...token?.user ?? [], ...user }
+        token.user = toSessionUser(user)
       }
       return token
     },

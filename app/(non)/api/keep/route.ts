@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@/auth";
-import { PrismaClient } from '@/prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '@/prisma';
+import { z } from 'zod';
+
+const httpUrl = z.string().trim().url().max(2048).refine((value) => {
+  const protocol = new URL(value).protocol;
+  return protocol === 'http:' || protocol === 'https:';
+}, 'Only HTTP and HTTPS URLs are allowed.');
+
+const createKeepSchema = z.object({
+  title: z.string().trim().min(1).max(300),
+  description: z.string().trim().max(5000).optional().default(''),
+  url: httpUrl,
+  image: z.union([httpUrl, z.literal('')]).optional().default(''),
+}).strict();
+
+const deleteKeepSchema = z.object({
+  id: z.number().int().positive(),
+}).strict();
 
 export async function GET() {
   try {
@@ -19,24 +35,16 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  }
   try {
-    const data = await request.json();
-    data.userId = session?.user?.id ?? '';
-
-    if ( !data.userId ) {
-      return NextResponse.json(
-        { error: 'Sign In is required.' },
-        { status: 400 }
-      );
-    }
-    if ( !data.title || !data.url ) {
-      return NextResponse.json(
-        { error: 'Title and URL are required.' },
-        { status: 400 }
-      );
+    const parsed = createKeepSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid bookmark data.' }, { status: 400 });
     }
 
-    await prisma.keep.create({ data });
+    await prisma.keep.create({ data: { ...parsed.data, userId: session.user.id } });
 
     return NextResponse.json(
       { message: 'Keep created successfully.' },
@@ -45,7 +53,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: error },
+      { error: 'Unable to create the bookmark.' },
       { status: 500 }
     );
   }
@@ -53,40 +61,39 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  }
   try {
-    const data = await request.json();
-    data.userId = session?.user?.id ?? '';
-
-    if ( !data.userId ) {
-      return NextResponse.json(
-        { error: 'Sign In is required.' },
-        { status: 400 }
-      );
+    const parsed = deleteKeepSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid bookmark identifier.' }, { status: 400 });
     }
+    const { id } = parsed.data;
 
     if (session?.user?.role === 'admin') {
       await prisma.keep.delete({
         where: {
-          id: data.id,
+          id,
         },
       });
     } else {
       await prisma.keep.delete({
         where: {
-          id: data.id,
-          userId: data.userId,
+          id,
+          userId: session.user.id,
         },
       });
     }
 
     return NextResponse.json(
       { message: 'Keep deleted successfully.' },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: error },
+      { error: 'Unable to delete the bookmark.' },
       { status: 500 }
     );
   }

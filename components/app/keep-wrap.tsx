@@ -8,8 +8,7 @@ import KeepPagination from '@/components/app/keep-pagination';
 import type { Session } from 'next-auth';
 import { SessionProvider } from "next-auth/react";
 import { Suspense } from 'react';
-import { PrismaClient } from '@/prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '@/prisma';
 
 export default async function KeepWrap(props: {
   session?: Session | null;
