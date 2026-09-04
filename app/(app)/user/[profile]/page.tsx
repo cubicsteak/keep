@@ -9,6 +9,7 @@ import {
 import { auth } from "@/auth";
 import { SessionProvider } from "next-auth/react";
 import { prisma } from '@/prisma';
+import { normalizePage, normalizeQuery } from '@/lib/pagination';
 
 export default async function Profile(props: {
   params: Promise<{ profile: string }>;
@@ -19,9 +20,8 @@ export default async function Profile(props: {
 }) {
   const session = await auth();
   const search = await props.searchParams;
-  const query = (search?.query || '').slice(0, 200);
-  const requestedPage = Number(search?.page);
-  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const query = normalizeQuery(search?.query);
+  const page = normalizePage(search?.page);
 
   const { profile } = await props.params;
   const username = profile;

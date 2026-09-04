@@ -7,6 +7,7 @@ import KeepWrap from "@/components/app/keep-wrap";
 
 import { auth } from "@/auth";
 import { SessionProvider } from "next-auth/react";
+import { normalizePage, normalizeQuery } from '@/lib/pagination';
 // import { PrismaClient } from '@/prisma/client';
 // const prisma = new PrismaClient();
 
@@ -18,9 +19,8 @@ export default async function Home(props: {
 }) {
   const session = await auth();
   const search = await props.searchParams;
-  const query = (search?.query || '').slice(0, 200);
-  const requestedPage = Number(search?.page);
-  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const query = normalizeQuery(search?.query);
+  const page = normalizePage(search?.page);
 
   return (
     <>
