@@ -6,6 +6,7 @@ import type { JWT } from "next-auth/jwt"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/prisma"
 import { PrismaClient as PrismaClientModule } from "@prisma/client"
+import { sessionUserSelect, toSessionUser } from "@/lib/session-user"
 // import { saltAndHashPassword } from "@/utils/password"
 // import { getUserFromDb } from "@/utils/db"
 // import Credentials from "next-auth/providers/credentials"
@@ -30,8 +31,6 @@ declare module "next-auth" {
     bio?: string | null;
     url?: string | null;
     username?: string | null;
-    password?: string | null;
-    passsalt?: string | null;
   }
   interface Session {
     user?: {
@@ -48,8 +47,6 @@ declare module "next-auth" {
       bio?: string | null;
       url?: string | null;
       username?: string | null;
-      password?: string | null;
-      passsalt?: string | null;
     }
   }
 }
@@ -70,8 +67,6 @@ declare module "next-auth/jwt" {
       bio?: string | null;
       url?: string | null;
       username?: string | null;
-      password?: string | null;
-      passsalt?: string | null;
     }
   }
 }
@@ -129,12 +124,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers,
   callbacks: {
-    async jwt({ token, user, trigger, session: newData }) {
-      delete user?.password;
-      delete user?.passsalt;
-      // token = { ...token, ...user }
+    async jwt({ token, user, trigger }) {
       if (trigger === 'update') {
-        return { ...token, ...newData }
+        const userId = token.user?.id;
+        if (userId) {
+          const freshUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: sessionUserSelect,
+          });
+          if (freshUser) token.user = toSessionUser(freshUser);
+        }
+        return token;
       }
       if (trigger === 'signIn' || trigger === 'signUp') {
         if (trigger === 'signUp') {
@@ -150,7 +150,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user.nick = user?.name ?? null;
           user.photo = user?.image ?? null;
         }
-        token.user = { ...token?.user ?? [], ...user }
+        token.user = toSessionUser(user)
       }
       return token
     },

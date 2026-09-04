@@ -1,22 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@/auth";
-import { PrismaClient } from '@/prisma/client';
+import { prisma } from '@/prisma';
+import { z } from 'zod';
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
-const prisma = new PrismaClient({
-  omit: {
-    user: {
-      password: true,
-      passsalt: true,
-    },
-  },
+const webUrl = z.string().trim().url().max(2048).refine((value) => {
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
 });
+
+const profileSchema = z.object({
+  nick: z.string().trim().min(2).max(16),
+  email: z.string().email().optional(),
+  bio: z.string().max(1000).optional().default(''),
+  url: z.union([webUrl, z.literal('')]).optional().default(''),
+  photo: z.union([webUrl, z.literal('')]).optional().default(''),
+}).strict();
+
+const usernameSchema = z.object({
+  username: z.union([
+    z.string().trim().min(3).max(20).regex(/^[A-Za-z0-9][A-Za-z0-9-]{2,19}$/),
+    z.literal(''),
+  ]),
+}).strict();
 
 export async function GET(request: NextRequest, { params }: Props) {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  }
 
   try {
     // const req = await request.json();
@@ -52,19 +71,16 @@ export async function GET(request: NextRequest, { params }: Props) {
           },
         };
         break;
-      case 'security':
-        fields = {
-          id: true,
-          password: true,
-          passsalt: true,
-        };
-        break;
+    }
+
+    if (!fields) {
+      return NextResponse.json({ error: 'Unknown settings resource.' }, { status: 404 });
     }
 
     const data = await prisma.user.findUnique({
       select: fields,
       where: {
-        id: session?.user?.id ?? '',
+        id: session.user.id,
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any;
@@ -83,7 +99,7 @@ export async function GET(request: NextRequest, { params }: Props) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: error },
+      { error: 'Unable to load account settings.' },
       { status: 500 }
     );
   }
@@ -91,6 +107,9 @@ export async function GET(request: NextRequest, { params }: Props) {
 
 export async function POST(request: NextRequest, { params }: Props) {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  }
 
   try {
     const req = await request.json();
@@ -98,21 +117,19 @@ export async function POST(request: NextRequest, { params }: Props) {
     const { slug } = await params;
 
     if (slug === 'profile') {
-      if ( !req?.nick ) {
-        return NextResponse.json(
-          { error: 'Name is required.' },
-          { status: 400 }
-        );
+      const parsed = profileSchema.safeParse(req);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid profile data.' }, { status: 400 });
       }
       await prisma.user.update({
         where: {
-          id: session?.user?.id ?? '',
+          id: session.user.id,
         },
         data: {
-          nick: req?.nick || null,
-          bio: req?.bio || null,
-          url: req?.url || null,
-          photo: req?.photo || null,
+          nick: parsed.data.nick,
+          bio: parsed.data.bio || null,
+          url: parsed.data.url || null,
+          photo: parsed.data.photo || null,
         },
       });
       return NextResponse.json(
@@ -122,14 +139,19 @@ export async function POST(request: NextRequest, { params }: Props) {
     }
 
     if (slug === 'username') {
-      if (req?.username) {
+      const parsed = usernameSchema.safeParse(req);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid username.' }, { status: 400 });
+      }
+      const username = parsed.data.username;
+      if (username) {
         const avoid = [
           'admin', 'administrator', 
           'app', 'cms', 'auth', 'api', 'settings', 
           'profile', 'system', 'operator', 'manager', 
            'keep',
         ];
-        if (avoid.includes(req?.username)) {
+        if (avoid.includes(username.toLowerCase())) {
           return NextResponse.json(
             { error: 'Already in use.' },
             { status: 400 }
@@ -137,9 +159,12 @@ export async function POST(request: NextRequest, { params }: Props) {
         }
         const count = await prisma.user.count({
           where: {
-            username: req?.username,
+            username: {
+              equals: username,
+              mode: 'insensitive',
+            },
             NOT: {
-              id: session?.user?.id ?? '',
+              id: session.user.id,
             },
           },
         });
@@ -152,10 +177,10 @@ export async function POST(request: NextRequest, { params }: Props) {
       }
       await prisma.user.update({
         where: {
-          id: session?.user?.id ?? '',
+          id: session.user.id,
         },
         data: {
-          username: req?.username || null,
+          username: username || null,
         },
       });
       return NextResponse.json(
@@ -167,7 +192,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     if (slug === 'remove-username') {
       await prisma.user.update({
         where: {
-          id: session?.user?.id ?? '',
+          id: session.user.id,
         },
         data: {
           username: null,
@@ -189,7 +214,7 @@ export async function POST(request: NextRequest, { params }: Props) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: error },
+      { error: 'Unable to update account settings.' },
       { status: 500 }
     );
   }
@@ -197,10 +222,13 @@ export async function POST(request: NextRequest, { params }: Props) {
 
 export async function DELETE() {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  }
   try {
     await prisma.user.delete({
       where: {
-        id: session?.user?.id ?? '',
+        id: session.user.id,
       },
     });
     return NextResponse.json(
@@ -210,7 +238,7 @@ export async function DELETE() {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: error },
+      { error: 'Unable to delete the account.' },
       { status: 500 }
     );
   }

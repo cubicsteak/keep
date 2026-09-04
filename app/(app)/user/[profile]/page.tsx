@@ -3,14 +3,12 @@ import KeepWrap from "@/components/app/keep-wrap";
 
 import {
   LucideCircleUser,
-  LucideMail,
   LucideEarth,
 } from "lucide-react";
 
 import { auth } from "@/auth";
 import { SessionProvider } from "next-auth/react";
-import { PrismaClient } from '@/prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '@/prisma';
 
 export default async function Profile(props: {
   params: Promise<{ profile: string }>;
@@ -21,15 +19,15 @@ export default async function Profile(props: {
 }) {
   const session = await auth();
   const search = await props.searchParams;
-  const query = search?.query || '';
-  const page = Number(search?.page) || 1;
+  const query = (search?.query || '').slice(0, 200);
+  const requestedPage = Number(search?.page);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
   const { profile } = await props.params;
   const username = profile;
   const userinfo = await prisma.user.findFirst({
     select: {
       nick: true,
-      email: true,
       bio: true,
       url: true,
       photo: true,
@@ -63,12 +61,6 @@ export default async function Profile(props: {
               <div className="flex gap-2 justify-center items-center">
                 <div><LucideCircleUser size={16} /></div>
                 <div>{userinfo?.nick ?? 'John Doe'}</div>
-              </div>
-            )}
-            {(!userinfo || userinfo?.email) && session && (
-              <div className="flex gap-2 justify-center items-center">
-                <div><LucideMail size={16} /></div>
-                <div>{userinfo?.email ?? 'mail@john.doe'}</div>
               </div>
             )}
             {(!userinfo || userinfo?.url) && (

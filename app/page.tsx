@@ -18,8 +18,9 @@ export default async function Home(props: {
 }) {
   const session = await auth();
   const search = await props.searchParams;
-  const query = search?.query || '';
-  const page = Number(search?.page) || 1;
+  const query = (search?.query || '').slice(0, 200);
+  const requestedPage = Number(search?.page);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
   return (
     <>

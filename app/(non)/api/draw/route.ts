@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@/auth";
 import { JSDOM } from 'jsdom';
+import { fetchPublicHtml } from '@/lib/safe-url';
 
 export async function GET(request: NextRequest) {
-  const url = new URL(request.url);
-  const q = decodeURIComponent(url.searchParams.get('q')?.toString() ?? '');
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+  }
+
+  const q = request.nextUrl.searchParams.get('q') ?? '';
 
   let title = '';
   let description = '';
   let image = '';
 
-  if (q.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/)) {
-    const session = await auth();
-    const data = await fetch(q, { cache: 'no-store' });
-    const html = await data.text();
+  try {
+    if (!q) {
+      return NextResponse.json({ error: 'A URL is required.' }, { status: 400 });
+    }
+
+    const { html, url: fetchedUrl } = await fetchPublicHtml(q);
     const dom = new JSDOM(html);
     const doc = dom?.window?.document;
 
@@ -21,7 +28,7 @@ export async function GET(request: NextRequest) {
     description = doc?.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? '';
     image = doc?.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? '';
 
-    const u = new URL(q);
+    const u = fetchedUrl;
     if (['www.youtube.com', 'youtu.be'].includes(u?.host ?? '') && (!title || !description || !image)) {
       let v = '';
       switch (u?.host) {
@@ -48,14 +55,9 @@ export async function GET(request: NextRequest) {
           ?? image;
       }
     }
+    return NextResponse.json({ title, description, image }, { status: 200 });
+  } catch (error) {
+    console.error('Failed to fetch bookmark metadata:', error);
+    return NextResponse.json({ error: 'Unable to fetch metadata for that URL.' }, { status: 400 });
   }
-
-  return NextResponse.json(
-    {
-      title: `${title}`,
-      description: `${description}`,
-      image: `${image}`,
-    },
-    { status: 200 }
-  );
 }
