@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@/auth";
 import { JSDOM } from 'jsdom';
 import { fetchPublicHtml } from '@/lib/safe-url';
+import { fetchYouTubeMetadata, getYouTubeVideoId } from '@/lib/youtube';
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -20,7 +21,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'A URL is required.' }, { status: 400 });
     }
 
-    const { html, url: fetchedUrl } = await fetchPublicHtml(q);
+    const youtubeVideoId = getYouTubeVideoId(q);
+    if (youtubeVideoId && process.env.GOOGLE_TOKEN) {
+      const metadata = await fetchYouTubeMetadata(youtubeVideoId, process.env.GOOGLE_TOKEN);
+      return NextResponse.json(metadata, { status: 200 });
+    }
+
+    const { html } = await fetchPublicHtml(q);
     const dom = new JSDOM(html);
     const doc = dom?.window?.document;
 
@@ -28,33 +35,6 @@ export async function GET(request: NextRequest) {
     description = doc?.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? '';
     image = doc?.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? '';
 
-    const u = fetchedUrl;
-    if (['www.youtube.com', 'youtu.be'].includes(u?.host ?? '') && (!title || !description || !image)) {
-      let v = '';
-      switch (u?.host) {
-        case 'www.youtube.com':
-          v = u?.searchParams?.get('v') ?? '';
-          break;
-        case 'youtu.be':
-          v = u?.pathname?.split('/')?.[1] ?? '';
-          break;
-      }
-
-      if (v && session && process.env.GOOGLE_TOKEN) {
-        const tube = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${v}&key=${process.env.GOOGLE_TOKEN}`);
-        const json = await tube.json();
-        const snippet = json?.items?.[0]?.snippet;
-
-        title = snippet?.title ?? title;
-        description = snippet?.description ?? description;
-        image = snippet?.thumbnails?.maxres?.url 
-          ?? snippet?.thumbnails?.standard?.url 
-          ?? snippet?.thumbnails?.high?.url 
-          ?? snippet?.thumbnails?.medium?.url 
-          ?? snippet?.thumbnails?.default?.url 
-          ?? image;
-      }
-    }
     return NextResponse.json({ title, description, image }, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch bookmark metadata:', error);
