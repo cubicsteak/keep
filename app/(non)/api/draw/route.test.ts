@@ -66,23 +66,24 @@ describe('/api/draw', () => {
     });
   });
 
-  it('uses YouTube metadata as a fallback without exposing the API key', async () => {
+  it('uses YouTube API metadata before attempting page crawling', async () => {
     const previousToken = process.env.GOOGLE_TOKEN;
     process.env.GOOGLE_TOKEN = 'server-secret';
-    mocks.fetchPublicHtml.mockResolvedValue({
-      html: '<html><head></head></html>',
-      url: new URL('https://youtu.be/video-id'),
-    });
+    mocks.fetchPublicHtml.mockRejectedValue(new Error('YouTube blocked the crawler'));
     const youtubeFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       items: [{ snippet: { title: 'Video', description: 'Video description' } }],
     }), { headers: { 'content-type': 'application/json' } }));
     vi.stubGlobal('fetch', youtubeFetch);
 
     try {
-      const response = await GET(request('https://youtu.be/video-id'));
+      const response = await GET(request('https://youtu.be/dQw4w9WgXcQ'));
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toMatchObject({ title: 'Video' });
-      expect(youtubeFetch).toHaveBeenCalledWith(expect.stringContaining('key=server-secret'));
+      expect(youtubeFetch).toHaveBeenCalledWith(
+        expect.objectContaining({ hostname: 'www.googleapis.com' }),
+        expect.objectContaining({ cache: 'no-store' }),
+      );
+      expect(mocks.fetchPublicHtml).not.toHaveBeenCalled();
     } finally {
       if (previousToken === undefined) delete process.env.GOOGLE_TOKEN;
       else process.env.GOOGLE_TOKEN = previousToken;
