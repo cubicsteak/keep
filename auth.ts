@@ -1,11 +1,10 @@
 import NextAuth from "next-auth"
-import authConfig from "./auth.config"
 import type { Provider } from "next-auth/providers"
 import type { Session } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/prisma"
-import { PrismaClient as PrismaClientModule } from "@prisma/client"
+import type { PrismaClient as PrismaClientModule } from "@/prisma/client/client"
 import { sessionUserSelect, toSessionUser } from "@/lib/session-user"
 // import { saltAndHashPassword } from "@/utils/password"
 // import { getUserFromDb } from "@/utils/db"
@@ -121,7 +120,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: false,
   adapter: PrismaAdapter(prisma as PrismaClientModule),
   session: { strategy: "jwt" },
-  ...authConfig,
   providers,
   callbacks: {
     async jwt({ token, user, trigger }) {
