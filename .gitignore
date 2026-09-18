@@ -45,4 +45,6 @@ next-env.d.ts
 *.db
 *.sqlite
 *.sqlite*
-prisma/migrations/*
+
+# prisma (generated client is a build artifact; migrations ARE tracked)
+/prisma/client/
