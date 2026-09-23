@@ -18,6 +18,7 @@ export default function KeepList({
     description?: string | null,
     url?: string | null,
     image?: string | null,
+    views?: number | null,
     createdAt?: Date | null,
     updatedAt?: Date | null,
     user?: {

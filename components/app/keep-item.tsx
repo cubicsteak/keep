@@ -56,6 +56,7 @@ export default function KeepItem({
     description?: string | null,
     url?: string | null,
     image?: string | null,
+    views?: number | null,
     createdAt?: Date | null,
     updatedAt?: Date | null,
     user?: {
@@ -69,6 +70,9 @@ export default function KeepItem({
   // const router = useRouter();
   const isManager = session?.user?.role === 'admin';
   const isCreator = keep?.userId === session?.user?.id;
+  // Visits are counted on the way out, so links point at the internal route
+  // instead of the stored URL. Without an ID there is nothing to count against.
+  const visitHref = keep?.id ? `/go/${keep.id}` : null;
   const [isDeleted, setIsDeleted] = useState(false);
   const [openDialogDelete, setOpenDialogDelete] = useState(false);
   const [openDialogReport, setOpenDialogReport] = useState(false);
@@ -124,14 +128,18 @@ export default function KeepItem({
       <CardHeader>
         <CardTitle className="overflow-hidden">
           <div className="text-base/5 line-clamp-3">
-            <a 
-              href={keep?.url ?? ''} 
-              target="_blank" 
-              rel="noreferrer" 
-              className="hover:text-blue-500 hover:underline" 
-            >
-              {keep?.title ?? ''}
-            </a>
+            {visitHref ? (
+              <a 
+                href={visitHref} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="hover:text-blue-500 hover:underline" 
+              >
+                {keep?.title ?? ''}
+              </a>
+            ) : (
+              <span>{keep?.title ?? ''}</span>
+            )}
           </div>
         </CardTitle>
         <CardDescription className="overflow-hidden">
@@ -142,14 +150,18 @@ export default function KeepItem({
             </div>
             <div className="flex-1 min-w-0">
               <div className="truncate">
-                <a 
-                  href={keep?.url ?? ''} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="hover:underline" 
-                >
-                  {keep?.url ?? ''}
-                </a>
+                {visitHref ? (
+                  <a 
+                    href={visitHref} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="hover:underline" 
+                  >
+                    {keep?.url ?? ''}
+                  </a>
+                ) : (
+                  <span>{keep?.url ?? ''}</span>
+                )}
               </div>
             </div>
           </div>
