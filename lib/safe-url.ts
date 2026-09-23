@@ -39,25 +39,6 @@ function isPrivateAddress(address: string) {
   return version === 4 ? isPrivateIPv4(address) : version === 6 ? isPrivateIPv6(address) : true;
 }
 
-// Parses a stored bookmark URL for a browser redirect. Unlike
-// validatePublicHttpUrl there is no DNS lookup: the browser, not the server,
-// makes the request, so SSRF is not a concern and a click must stay fast.
-export function parsePublicHttpDestination(value?: string | null) {
-  if (!value) return null;
-
-  let url: URL;
-  try {
-    url = new URL(value.trim());
-  } catch {
-    return null;
-  }
-
-  if (!['http:', 'https:'].includes(url.protocol)) return null;
-  if (url.username || url.password) return null;
-
-  return url;
-}
-
 export async function validatePublicHttpUrl(value: string) {
   const url = new URL(value);
 

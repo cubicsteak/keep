@@ -70,9 +70,13 @@ export default function KeepItem({
   // const router = useRouter();
   const isManager = session?.user?.role === 'admin';
   const isCreator = keep?.userId === session?.user?.id;
-  // Visits are counted on the way out, so links point at the internal route
-  // instead of the stored URL. Without an ID there is nothing to count against.
-  const visitHref = keep?.id ? `/go/${keep.id}` : null;
+  // Counted from the click, not a redirect hop, so the link can carry the real
+  // destination and a crawler that never clicks stays out of the tally.
+  // sendBeacon is not cancelled when the page goes away; the id rides in the path
+  // so there is no body and no content-type to negotiate.
+  const countView = () => {
+    if (keep?.id) navigator.sendBeacon(`/api/keep/${keep.id}/view`);
+  };
   const [isDeleted, setIsDeleted] = useState(false);
   const [openDialogDelete, setOpenDialogDelete] = useState(false);
   const [openDialogReport, setOpenDialogReport] = useState(false);
@@ -128,11 +132,13 @@ export default function KeepItem({
       <CardHeader>
         <CardTitle className="overflow-hidden">
           <div className="text-base/5 line-clamp-3">
-            {visitHref ? (
+            {keep?.url ? (
               <a 
-                href={visitHref} 
+                href={keep.url} 
                 target="_blank" 
                 rel="noreferrer" 
+                onClick={countView} 
+                onAuxClick={countView} 
                 className="hover:text-blue-500 hover:underline" 
               >
                 {keep?.title ?? ''}
@@ -150,14 +156,16 @@ export default function KeepItem({
             </div>
             <div className="flex-1 min-w-0">
               <div className="truncate">
-                {visitHref ? (
+                {keep?.url ? (
                   <a 
-                    href={visitHref} 
+                    href={keep.url} 
                     target="_blank" 
                     rel="noreferrer" 
+                    onClick={countView} 
+                    onAuxClick={countView} 
                     className="hover:underline" 
                   >
-                    {keep?.url ?? ''}
+                    {keep.url}
                   </a>
                 ) : (
                   <span>{keep?.url ?? ''}</span>
