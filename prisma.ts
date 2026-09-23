@@ -18,9 +18,17 @@ function createPrismaClient() {
     return new PrismaClient({ accelerateUrl: url })
   }
 
+  // `?schema=` is a Prisma convention that `pg` parses into an inert config key,
+  // so with a driver adapter the schema has to reach the adapter explicitly or
+  // every query resolves against the default search_path instead.
+  const schema = new URL(url).searchParams.get("schema") || undefined
+
   return new PrismaClient({
     // `pg` has no connect timeout by default; keep the pre-v7 behaviour.
-    adapter: new PrismaPg({ connectionString: url, connectionTimeoutMillis: 5000 }),
+    adapter: new PrismaPg(
+      { connectionString: url, connectionTimeoutMillis: 5000 },
+      schema ? { schema } : undefined,
+    ),
   })
 }
 
