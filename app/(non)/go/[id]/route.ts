@@ -7,12 +7,19 @@ type Props = {
 };
 
 // A redirect that counts must never be cached, by the browser or by a CDN.
-const noStore = { 'Cache-Control': 'no-store' };
+// Referrer-Policy makes dropping the referrer the server's guarantee rather than
+// the markup's: the cards carry rel="noreferrer", but /go/[id] is a shareable URL
+// and a visitor arriving any other way would otherwise hand their referrer to the
+// destination. The policy set on a redirect governs the request it triggers.
+const secureHeaders = {
+  'Cache-Control': 'no-store',
+  'Referrer-Policy': 'no-referrer',
+};
 
 const ID_PATTERN = /^[1-9][0-9]{0,9}$/;
 
 function notFound() {
-  return new NextResponse('Not Found', { status: 404, headers: noStore });
+  return new NextResponse('Not Found', { status: 404, headers: secureHeaders });
 }
 
 export async function GET(request: Request, { params }: Props) {
@@ -51,15 +58,15 @@ export async function GET(request: Request, { params }: Props) {
       return notFound();
     }
 
-    return NextResponse.redirect(destination, { status: 302, headers: noStore });
+    return NextResponse.redirect(destination, { status: 302, headers: secureHeaders });
   } catch (error) {
     console.error(error);
-    return new NextResponse('Internal Server Error', { status: 500, headers: noStore });
+    return new NextResponse('Internal Server Error', { status: 500, headers: secureHeaders });
   }
 }
 
 // Next derives HEAD from GET unless it is exported, which would let monitors and
 // link previews inflate the count. Answer them without touching the row.
 export async function HEAD() {
-  return new NextResponse(null, { status: 204, headers: noStore });
+  return new NextResponse(null, { status: 204, headers: secureHeaders });
 }

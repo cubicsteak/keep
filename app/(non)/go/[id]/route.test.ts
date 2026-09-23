@@ -40,6 +40,9 @@ describe('/go/[id]', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe('https://example.com/page');
     expect(response.headers.get('cache-control')).toBe('no-store');
+    // The destination must not learn where the visitor came from, whichever way
+    // they reached /go/[id].
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
     expect(mocks.findUnique).toHaveBeenCalledWith({
       where: { id: 42 },
       select: { url: true },
@@ -69,6 +72,7 @@ describe('/go/[id]', () => {
 
       expect(response.status).toBe(404);
       expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(response.headers.get('referrer-policy')).toBe('no-referrer');
       expect(mocks.findUnique).not.toHaveBeenCalled();
       expect(mocks.update).not.toHaveBeenCalled();
     },
@@ -118,6 +122,7 @@ describe('/go/[id]', () => {
 
     expect(response.status).toBe(204);
     expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
