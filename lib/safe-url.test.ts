@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchPublicHtml, validatePublicHttpUrl } from './safe-url';
+import { fetchPublicHtml, parsePublicHttpDestination, validatePublicHttpUrl } from './safe-url';
 
 const mocks = vi.hoisted(() => ({ lookup: vi.fn() }));
 
@@ -32,6 +32,30 @@ describe('validatePublicHttpUrl', () => {
       hostname: 'example.com',
       protocol: 'https:',
     });
+  });
+});
+
+describe('parsePublicHttpDestination', () => {
+  it.each([
+    'javascript:alert(1)',
+    'file:///etc/passwd',
+    'data:text/html,<script>alert(1)</script>',
+    'https://user:password@example.com',
+    'not a url',
+    '/relative/path',
+    '',
+    null,
+    undefined,
+  ])('rejects the unusable destination %s', (value) => {
+    expect(parsePublicHttpDestination(value)).toBeNull();
+  });
+
+  it.each([
+    'https://example.com/page?a=1#b',
+    '  http://example.com  ',
+    'http://example.com:8443/internal',
+  ])('accepts the HTTP(S) destination %s', (value) => {
+    expect(parsePublicHttpDestination(value)?.protocol).toMatch(/^https?:$/);
   });
 });
 

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Keep" ADD COLUMN     "views" INTEGER NOT NULL DEFAULT 0;
