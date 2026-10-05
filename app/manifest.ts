@@ -1,4 +1,6 @@
 import type { MetadataRoute } from "next";
+import icon from "./icon.png";
+import appleIcon from "./apple-icon.png";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -8,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     icons: [
-      { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: icon.src, sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: appleIcon.src, sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }
