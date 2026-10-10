@@ -97,10 +97,7 @@ export default function SettingsProfile() {
       const result = await res.json();
       if (res.ok) {
         toast.success(result.message);
-        await update({
-          ...session,
-          user: await fetch('/api/user/me').then(res => res.json()),
-        });
+        await update({});
         router.refresh();
       } else {
         toast.error("Failed to updated profile.", {
