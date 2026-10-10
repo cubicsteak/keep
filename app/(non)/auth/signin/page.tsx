@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import Keep from "@/components/app/keep";
+import { sendEmailCode } from "../actions";
 
 export default async function AuthSignIn(props: {
   searchParams?: Promise<{ 
@@ -126,24 +127,14 @@ export default async function AuthSignIn(props: {
                 {Object.values(providerSet.email).map((provider) => (
                   <form
                     key={provider.id}
-                    action={async (formData) => {
-                      "use server"
-                      try {
-                        formData.append('redirectTo', searchParams?.callbackUrl ?? "");
-                        await signIn(provider.id, formData)
-                      } catch (error) {
-                        // console.log(error)
-                        if (error instanceof AuthError) {
-                          return redirect(`${signinErrorURL}?error=${error}`)
-                        }
-                        throw error
-                      }
-                    }}
+                    action={sendEmailCode}
                   >
+                    <input type="hidden" name="provider" value={provider.id} />
+                    <input type="hidden" name="callbackUrl" value={searchParams?.callbackUrl ?? ""} />
                     <div className="space-y-3">
                       <div className="grid gap-2">
                         <Label className={`${formElementsCN.label}`} htmlFor={`email-${provider.id}`}>Email</Label>
-                        <Input className={`${formElementsCN.input}`} name="email" id={`email-${provider.id}`} placeholder="Email" />
+                        <Input className={`${formElementsCN.input}`} type="email" name="email" id={`email-${provider.id}`} placeholder="Email" required />
                       </div>
                       <div className="grid gap-2">
                         <Button type="submit" className={`${formElementsCN.button}`}>

@@ -6,6 +6,12 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/prisma"
 import type { PrismaClient as PrismaClientModule } from "@/prisma/client/client"
 import { sessionUserSelect, toSessionUser } from "@/lib/session-user"
+import {
+  OTP_MAX_AGE_SECONDS,
+  generateOtp,
+  sendOtpVerificationRequest,
+  withOtpGuard,
+} from "@/lib/email-otp"
 // import { saltAndHashPassword } from "@/utils/password"
 // import { getUserFromDb } from "@/utils/db"
 // import Credentials from "next-auth/providers/credentials"
@@ -93,6 +99,9 @@ const providers: Provider[] = [
   Nodemailer({
     server: process.env.EMAIL_SERVER,
     from: process.env.EMAIL_FROM,
+    maxAge: OTP_MAX_AGE_SECONDS,
+    generateVerificationToken: generateOtp,
+    sendVerificationRequest: sendOtpVerificationRequest,
   }),
 ]
 
@@ -118,7 +127,10 @@ export const providerMap = providers
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: false,
-  adapter: PrismaAdapter(prisma as PrismaClientModule),
+  adapter: withOtpGuard(
+    PrismaAdapter(prisma as PrismaClientModule),
+    prisma.verificationToken,
+  ),
   session: { strategy: "jwt" },
   providers,
   callbacks: {

@@ -53,12 +53,15 @@ const errorMap = {
     'Unable to sign in',
     (
       <>
-        <p>The sign in link is no longer valid.</p>
-        <p>It may have been used already or it may have expired.</p>
+        <p>The sign in code is incorrect or no longer valid.</p>
+        <p>It may have expired, or too many attempts were made.</p>
       </>
     ),
     (
       <>
+        <Button variant="outline" onClick={() => window.history.back()}>
+          <LucideUndo2 /> Try again
+        </Button>
         <Button onClick={() => signIn(undefined, { redirectTo: '/' })}>
           <LucideLogIn /> Sign in
         </Button>
